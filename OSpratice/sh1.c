@@ -95,6 +95,7 @@ void eval(char * cmdstring)
 	int status;
 	/*
 	*在此处进行修改
+	达拉达拉达拉
 	*/
 	if(pid==0)
 	{

@@ -103,20 +103,6 @@ void eval(char * cmdstring)
 	if(pid==0)
 	{
 		int argc=0;
-		while(argv[argc]!=NULL)
-		{
-			if(*argv[argc]=='>')
-			{
-				if(system(cmdstring)<0)
-				{
-					printf("%s:command incorrect.\n",argv[0]);
-					exit(0);
-				}
-				else
-					exit(0);
-			}
-			argc++;
-		}
 		if(execvp(argv[0],argv)<0)
 		{
 			printf("%s:command not found.\n",argv[0]);

@@ -43,6 +43,13 @@ int split_cmdstr(char *buf,char **argv)//字符分割，设置参数argv
 	}
 	argv[argc]=NULL;
 	/*the last element is NULL*/
+	argc=0;
+/*	while(argv[argc]!=NULL)
+	{
+		printf("%s\n",argv[argc]);
+		argc++;
+	}
+	*/
 	return 0;
 
 }
@@ -93,21 +100,14 @@ void eval(char * cmdstring)
 	}
 	pid_t pid=fork();
 	int status;
-	/*
-	*在此处进行修改
-	达拉达拉达拉
-	*/
 	if(pid==0)
 	{
-<<<<<<< HEAD
 		int argc=0;
-=======
->>>>>>> parent of 9b8e3f8... 实现重定向
 		if(execvp(argv[0],argv)<0)
 		{
 			printf("%s:command not found.\n",argv[0]);
 			exit(0);
-		}
+		}		
 	}
 	wait(&status);
 }

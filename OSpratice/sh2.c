@@ -1,228 +1,183 @@
 #include<stdio.h>
-#include<string.h>
 #include<stdlib.h>
-#include<unistd.h>
+#include<string.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<fcntl.h>
 #include<unistd.h>
 #include<sys/wait.h>
-#include<sys/types.h>
 
-#define Max_Cmd 128
-#define Max_Dir_Name 128
+#define LEN 256
+#define WIDTH 256
+#define HEIGHT 10
+#define PRO_LEN 512
 
-void pre_make_str(char * buf,char *temp_buf){
-	//printf("pre_make_str\n");
-	if(*buf=='\n'){
-        *temp_buf='\n';
-	}
-	else
-	{
-	    char *c=buf,*p=temp_buf;
-	    while(*c!='\n')
-	    {
-		    if(*c=='<'||*c=='>')
-		    {
-			    *p=' ';
-			    p++;
-			    *p=*c;
-			    p++;
-			    *p=' ';
-			    c++;
-			    p++;
-		    }
-		    else
-		    {
-                *p=*c;
-                c++;
-                p++;
-		    }
-	    }
-	    *p=*c;
-	    p++;
-	    *p='\0';
-        //printf("temp_buf:%s",temp_buf);
-    }
-    //printf("pre_make_str over\n");
-}
-
-
-
-int shell_cmd(char **argv){
-	//printf("shell_cmd.\n",argv[0]);
-	int error;
-	if(strcmp(argv[0],"echo")==0){
-		error = execv("./myecho", argv);
-	}
-	/*
-	else if(strcmp(argv[0],"cat")==0){
-		error = execvp("mycat",argv);
-	}
-	*/
-	else {
-        error = execvp(argv[0],argv);
-	}
-	if(error<0){
-		//printf("error\n");
-	    return -1;
-	}
-	else{
-		return 1;
-	}
-}
-
-
-int buildin_cmdstr(char **argv)
+void pre_make_str(char source_cmd[],char *pre_source_cmd)
 {
-	if(strcmp(argv[0],"exit")==0)
+	printf("pre make str\n");
+	int i=0,j=0;
+	while(source_cmd[i]==' ')
+		i++;
+	pre_source_cmd[j]=source_cmd[i];
+	i++;j++;
+
+	while(source_cmd[i]!='\n')
 	{
-		//printf("exit\n");
-		exit(0);
-	}
-	if(strcmp(argv[0],"cd")==0)
-	{
-		if(chdir(argv[1])<0)
+		if(source_cmd[i]=='>'||source_cmd[i]=='|')
 		{
-			printf("No such directory：%s\n",argv[0]);
+			pre_source_cmd[j]=' ';
+			j++;
+			pre_source_cmd[j]=source_cmd[i];
+			i++;
+			j++;
+			pre_source_cmd[j]=' ';
+			j++;
 		}
-		return 1;
+		else
+		{
+			pre_source_cmd[j]=source_cmd[i];
+			i++;j++;
+		}
 	}
-	else if(strcmp(argv[0],"pwd")==0)
-	{
-		char path[Max_Dir_Name];
-		getcwd(path,Max_Dir_Name);
-		printf("%s\n",path);
-		return 1;
-	}
-	return 0;
+	pre_source_cmd[j]=source_cmd[i];
+	j++;
+	pre_source_cmd[j]='\0';
+	printf("%s",pre_source_cmd);
+	printf("pre make str OVER\n");
 }
 
-char buf_cmd[Max_Cmd*2];
-
-int split_cmdstr(char *cmd_str,char **argv)//字符分割，设置参数argv
-{
-	//printf("split_cmdstr\n");
-	//char buf_cmd[Max_Cmd*2];
-	char *buf;
-	pre_make_str(cmd_str,buf_cmd);
-	buf=buf_cmd;
-	//buf=cmd_str;
-	int argc=0;
-	char *buf_end;
-	while(*buf==' '){buf++;}//忽略开头空格
-
-	while(*buf!='\n')
-	{
-		buf_end=buf;
-		while(*buf_end!='\n'&&*buf_end!=' ')
-		{
-			buf_end++;//当前字符不为空格和回车键时，下标后移
-		}
-
-		if(*buf_end=='\n')//到了回车键，命令结束
-		{
-
-			*buf_end='\0';
-			argv[argc]=buf;
-			argc++;
-			break;
-		}
-
-		else if(*buf_end==' ')
-		{//空格为字符串分界
-		    *buf_end='\0';
-		    argv[argc]=buf;
-		    buf=buf_end+1;
-		    argc++;
-		}
-
-		while(*buf==' ')
-		{
-			buf++;
+void split_cmd(char source_cmd[],char dest_cmd[HEIGHT][WIDTH]){
+	char *p;
+	char *pre_source_cmd=malloc(sizeof(char)*PRO_LEN);
+	pre_make_str(source_cmd,pre_source_cmd);
+	p=strsep(&pre_source_cmd," ");
+	int i=0,j=1;
+	for(i=0;p[i]!='\0'&&p[i]!='\n';i++){
+		dest_cmd[0][i]=p[i];
+	}
+	dest_cmd[0][i]='\0';
+	while(p!=NULL){
+		p=strsep(&pre_source_cmd," ");
+		if(p&&*p!=0){
+			printf("%d:%d-%s\n",j,p[0],p);
+			for(i=0;p[i]!='\0'&&p[i]!='\n';i++){
+				dest_cmd[j][i]=p[i];
+			}
+			dest_cmd[j][i]='\0';
+			j++;
 		}
 	}
-
-	argv[argc]=NULL;
-	/*the last element is NULL*/
-	/*
-	argc=0;	
-    while(argv[argc]!=NULL)
-	{
-		printf("%s\n",argv[argc]);
-		argc++;
+	dest_cmd[j][0]='\0';
+	for(i=0;i<=j;i++){
+		printf("%d:%s\n",i+1,dest_cmd[i]);
 	}
-	//*/
-	//printf("split_cmdstr over\n");
-	return 0;
-
 }
 
-
-void eval(char * cmdstring)
-{
-	//char buf[Max_Cmd];
-	char *argv[Max_Cmd];
-	//int i=0;
-	//for(i=0;i<Max_Cmd;i++)
-	//	buf[i]='\0';
-    split_cmdstr(cmdstring,argv);
-	/*
-	int argc=0;	
-    while(argv[argc]!=NULL)
-	{
-		printf("%s\n",argv[argc]);
-		argc++;
-	}
-	printf("first command:%s\n",argv[0]);
-    //*/
-    ///*
-	if(argv[0]==NULL)
-	{
-		//printf("NULL command:%s\n",argv[0]);
-		return;
-	}
-	else if(buildin_cmdstr(argv))
-	{
-		//printf("buildin command:%s\n",argv[0]);
-		return;
-	}
-	else
-	{
-		pid_t pid=fork();
-		int status;
-		if(pid==0)
+int execute_cmd(char dest_cmd[HEIGHT][WIDTH]){
+	pid_t pid;
+	if (strcmp(dest_cmd[0], "echo") == 0) {
+		pid = fork();
+		if (pid == 0) 
 		{
-			//printf("pid.\n",argv[0]);
-			//printf("pif command:%s\n",argv[0]);
-			if(shell_cmd(argv)<0)
+			int i, fd;
+			int flag = 0;
+			int loc = 0;
+
+			for (i = 1; dest_cmd[i][0]!='\0'; i++) {
+				if (dest_cmd[i][0]=='>') {
+					flag = 1;
+					loc = i;
+					break;
+				}
+			}
+			//printf("loc:%d\n",loc);
+
+			if (flag)
 			{
-				printf("%s:command not found.\n",argv[0]);
-				exit(0);
-			}		
+				char * path = dest_cmd[loc + 1];
+				//fd=open(path,O_RDWR|O_APPEND|O_CREAT);
+				fd = open(path, O_RDWR | O_TRUNC | O_CREAT);
+				if (fd < 0) {
+					printf("file open error\n");
+					exit(0);
+				}
+				int step = 1;
+				while (step < loc)
+				{
+					int count = write(fd,dest_cmd[step],strlen(dest_cmd[step]));
+					if (count < 0) {
+						printf("write open error\n");
+						exit(0);
+					}
+					write(fd, " ", 1);
+					step++;
+				}
+
+				write(fd, "\n", 1);
+				exit(1);
+			}
+
+			else 
+			{
+				for (i = 1; dest_cmd[i][0]!='\0'; i++)
+				{
+					//printf("argv[%d]:%s%s",i,argv[i],(i<argc-1)?"\n":"");
+					printf("%s ", dest_cmd[i]);
+				}
+				printf("\n");
+				exit(1);
+			}
+
 		}
-		wait(&status);
+		else
+		{
+			int status;
+			wait(&status);
+			if (WIFEXITED(status)) 
+			{
+        		//printf("WIFEXITED = true\n"); 
+        		if(WEXITSTATUS(status)==0)
+        			return -1;
+        		else if(WEXITSTATUS(status)==1)
+        		    return  1;
+    		}
+		}
+	}//if echo
+    else if(strcmp(command)){
+
+    }
+	else
+	{
+		return 0;
 	}
-		//*/
 }
 
-
-int main(int argc, char *argv[])
+int main()
 {
-	char cmdstring[Max_Cmd];
-	int n;
-	int i;
+	char source_cmd[LEN];
+	char dest_cmd[HEIGHT][WIDTH]={{'\0'}};
 	while(1)
 	{
-		for(i=0;i<Max_Cmd;i++)
-		cmdstring[i]='\0';
-		printf("myshell>");
-
+		printf("myshell>>");
 		fflush(stdout);
-		if((n=read(0,cmdstring,Max_Cmd))<0)
+
+		if(read(0,source_cmd,LEN)<0)
 		{
 			printf("read error!\n");
 		}
 		else
 		{
-			eval(cmdstring);
+			split_cmd(source_cmd,dest_cmd);
+			int status=execute_cmd(dest_cmd);
+			if(status==0)
+			{
+				printf("%s:Command not found\n",dest_cmd[0]);
+			}
+		}
+		int i;
+		for(i=0;i<LEN;i++)//重置字符串
+		{
+			command[i]='\0';
 		}
 	}
 	return 0;

@@ -11,10 +11,12 @@
 #define WIDTH 256
 #define HEIGHT 10
 #define PRO_LEN 512
+#define Max_Dir_Name 128
+char source_cmd[LEN];
 
 void pre_make_str(char source_cmd[],char *pre_source_cmd)
 {
-	printf("pre make str\n");
+	//printf("pre make str\n");
 	int i=0,j=0;
 	while(source_cmd[i]==' ')
 		i++;
@@ -42,8 +44,8 @@ void pre_make_str(char source_cmd[],char *pre_source_cmd)
 	pre_source_cmd[j]=source_cmd[i];
 	j++;
 	pre_source_cmd[j]='\0';
-	printf("%s",pre_source_cmd);
-	printf("pre make str OVER\n");
+	//printf("%s",pre_source_cmd);
+	//printf("pre make str OVER\n");
 }
 
 void split_cmd(char source_cmd[],char dest_cmd[HEIGHT][WIDTH]){
@@ -59,7 +61,7 @@ void split_cmd(char source_cmd[],char dest_cmd[HEIGHT][WIDTH]){
 	while(p!=NULL){
 		p=strsep(&pre_source_cmd," ");
 		if(p&&*p!=0){
-			printf("%d:%d-%s\n",j,p[0],p);
+			//printf("%d:%d-%s\n",j,p[0],p);
 			for(i=0;p[i]!='\0'&&p[i]!='\n';i++){
 				dest_cmd[j][i]=p[i];
 			}
@@ -68,23 +70,25 @@ void split_cmd(char source_cmd[],char dest_cmd[HEIGHT][WIDTH]){
 		}
 	}
 	dest_cmd[j][0]='\0';
-	for(i=0;i<=j;i++){
-		printf("%d:%s\n",i+1,dest_cmd[i]);
-	}
+	//for(i=0;i<=j;i++){
+	//	printf("%d:%s\n",i,dest_cmd[i]);
+	//}
 }
 
-int execute_cmd(char dest_cmd[HEIGHT][WIDTH]){
+int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
+	int cmd_exit = 0;
 	pid_t pid;
+	int status;
 	if (strcmp(dest_cmd[0], "echo") == 0) {
 		pid = fork();
-		if (pid == 0) 
+		if (pid == 0)
 		{
 			int i, fd;
 			int flag = 0;
 			int loc = 0;
 
-			for (i = 1; dest_cmd[i][0]!='\0'; i++) {
-				if (dest_cmd[i][0]=='>') {
+			for (i = 1; dest_cmd[i][0] != '\0'; i++) {
+				if (dest_cmd[i][0] == '>') {
 					flag = 1;
 					loc = i;
 					break;
@@ -99,85 +103,129 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]){
 				fd = open(path, O_RDWR | O_TRUNC | O_CREAT);
 				if (fd < 0) {
 					printf("file open error\n");
-					exit(0);
 				}
 				int step = 1;
 				while (step < loc)
 				{
-					int count = write(fd,dest_cmd[step],strlen(dest_cmd[step]));
+					int count = write(fd, dest_cmd[step], strlen(dest_cmd[step]));
 					if (count < 0) {
 						printf("write open error\n");
-						exit(0);
 					}
 					write(fd, " ", 1);
 					step++;
 				}
-
 				write(fd, "\n", 1);
-				exit(1);
 			}
 
-			else 
+			else
 			{
-				for (i = 1; dest_cmd[i][0]!='\0'; i++)
+				for (i = 1; dest_cmd[i][0] != '\0'; i++)
 				{
 					//printf("argv[%d]:%s%s",i,argv[i],(i<argc-1)?"\n":"");
 					printf("%s ", dest_cmd[i]);
 				}
 				printf("\n");
-				exit(1);
+			}
+
+		}//fork 子进程
+		else
+		{
+			wait(&status);
+		}
+	}//if echo
+	else if (strcmp(dest_cmd[0], "ls") == 0)
+	{
+		pid = fork();
+		if (pid == 0) {
+			if (dest_cmd[1][0] == '\0') {
+				execlp("/bin/ls", "ls", "./", NULL);
+			}
+			else {
+				execlp("/bin/ls", "ls", dest_cmd[1], NULL);
+			}
+		}
+		else {
+			wait(&status);
+		}
+	}//else if ls
+	else if (strcmp(dest_cmd[0], "cd") == 0)
+	{
+		pid = fork();
+		if (pid == 0) {
+			int result = chdir(dest_cmd[1]);
+			if (result < 0)//chdir成功返回0 失败返回-1
+			{
+				printf("No such directory：%s\n", dest_cmd[1]);
 			}
 
 		}
-		else
-		{
-			int status;
+		else {
 			wait(&status);
-			if (WIFEXITED(status)) 
-			{
-        		//printf("WIFEXITED = true\n"); 
-        		if(WEXITSTATUS(status)==0)
-        			return -1;
-        		else if(WEXITSTATUS(status)==1)
-        		    return  1;
-    		}
 		}
-	}//if echo
-    else if(strcmp(command)){
-
-    }
-	else
+	}//else if cd
+	else if (strcmp(dest_cmd[0], "pwd") == 0)
 	{
-		return 0;
+		pid = fork();
+		if (pid == 0)
+		{
+			char path[Max_Dir_Name];
+			if (getcwd(path, Max_Dir_Name)) {
+				printf("%s\n", path);
+			}
+
+		}
+		else {
+			wait(&status);		
+		}
+	}//else if pwd
+	else if (strcmp(dest_cmd[0], "exit") == 0)
+	{
+		cmd_exit=1;
+	}//else if exit
+	else if (dest_cmd[0][0] != '\0')
+	{
+		pid = fork();
+		if (pid == 0) {
+			execl("/bin/sh", "sh", "-c", source_cmd, NULL);
+			exit(-1);
+		}
+		else {
+			wait(&status);
+		}
 	}
+
+	if(cmd_exit==0)
+		return 0;
+	else
+		return 1;
 }
+
 
 int main()
 {
-	char source_cmd[LEN];
-	char dest_cmd[HEIGHT][WIDTH]={{'\0'}};
-	while(1)
+	char dest_cmd[HEIGHT][WIDTH] = { {'\0'} };
+	while (1)
 	{
+		int i;
+		for (i = 0; i < LEN; i++)//重置字符串
+		{
+			source_cmd[i] = '\0';
+		}
 		printf("myshell>>");
 		fflush(stdout);
 
-		if(read(0,source_cmd,LEN)<0)
+		if (read(0, source_cmd, LEN) < 0)
 		{
 			printf("read error!\n");
 		}
 		else
 		{
-			split_cmd(source_cmd,dest_cmd);
-			int status=execute_cmd(dest_cmd);
-			if(status==0)
+			split_cmd(source_cmd, dest_cmd);
+			int result = execute_cmd(dest_cmd);
+			if (result == 1)
 			{
-				printf("%s:Command not found\n",dest_cmd[0]);
+				exit(0);
 			}
-		}
-		int i;
-		for(i=0;i<LEN;i++)//重置字符串
-		{
-			command[i]='\0';
 		}
 	}
 	return 0;

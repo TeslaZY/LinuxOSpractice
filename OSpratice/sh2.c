@@ -128,10 +128,8 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
 			}
 
 		}//fork 子进程
-		else
-		{
-			wait(&status);
-		}
+		wait(&status);
+		
 	}//if echo
 	else if (strcmp(dest_cmd[0], "ls") == 0)
 	{
@@ -144,9 +142,7 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
 				execlp("/bin/ls", "ls", dest_cmd[1], NULL);
 			}
 		}
-		else {
 			wait(&status);
-		}
 	}//else if ls
 	else if (strcmp(dest_cmd[0], "cd") == 0)
 	{
@@ -159,9 +155,7 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
 			}
 
 		}
-		else {
 			wait(&status);
-		}
 	}//else if cd
 	else if (strcmp(dest_cmd[0], "pwd") == 0)
 	{
@@ -172,11 +166,8 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
 			if (getcwd(path, Max_Dir_Name)) {
 				printf("%s\n", path);
 			}
-
 		}
-		else {
 			wait(&status);		
-		}
 	}//else if pwd
 	else if (strcmp(dest_cmd[0], "exit") == 0)
 	{
@@ -189,9 +180,7 @@ int execute_cmd(char dest_cmd[HEIGHT][WIDTH]) {
 			execl("/bin/sh", "sh", "-c", source_cmd, NULL);
 			exit(-1);
 		}
-		else {
 			wait(&status);
-		}
 	}
 
 	if(cmd_exit==0)

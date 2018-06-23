@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include<pthread.h>
 
-#define CAPACITY 1
+#define CAPACITY 4
 
 int buffer1[CAPACITY];
 int buffer1_in;
@@ -99,9 +99,9 @@ void *produce(void *arg){
         
         item = 'a'+i;
 		put_item(1,item);
-        printf("produce item %c:\n",item);
         sema_signal(&buffer1_mutex_sema);
         sema_signal(&full_buffer1_sema);
+        printf("produce item：%c\n",item);
 	}
     return NULL;
 }
@@ -123,9 +123,9 @@ void *compute(void *arg){
 		sema_wait(&buffer2_mutex_sema);
 		item2=item1+('A'-'a');
 		put_item(2,item2);
-		printf("    change %c to %c\n",item1,item2);
 		sema_signal(&buffer2_mutex_sema);
         sema_signal(&full_buffer2_sema);
+        printf("    change %c to %c\n",item1,item2);
 	}
 	return NULL;
 }
@@ -139,9 +139,10 @@ void *consume(void *arg){
     	sema_wait(&buffer2_mutex_sema);
 
     	item=get_item(2);
-        printf("        consume item %c:\n",item);
+        
         sema_signal(&buffer2_mutex_sema);
         sema_signal(&empty_buffer2_sema);
+        printf("        consume item：%c\n",item);
     }
     return NULL;
 }
@@ -153,19 +154,21 @@ int main(){
 	pthread_t producer_tid;
 
 	sema_init(&buffer1_mutex_sema,1);
-	sema_init(&empty_buffer1_sema,CAPACITY);
+	sema_init(&empty_buffer1_sema,CAPACITY-1);
 	sema_init(&full_buffer1_sema,0);
 
 	sema_init(&buffer2_mutex_sema,1);
-	sema_init(&empty_buffer2_sema,CAPACITY);
+	sema_init(&empty_buffer2_sema,CAPACITY-1);
 	sema_init(&full_buffer2_sema,0);
 
-    pthread_create(&producer_tid,NULL,produce,NULL);
 	pthread_create(&computer_tid,NULL,consume,NULL);
+
 	pthread_create(&consumer_tid,NULL,compute,NULL);
 
+    pthread_create(&producer_tid,NULL,produce,NULL);
+	
+	pthread_join(computer_tid,NULL);	
 	pthread_join(producer_tid,NULL);
-	pthread_join(computer_tid,NULL);
 	pthread_join(consumer_tid,NULL);
 	return 0;
 }

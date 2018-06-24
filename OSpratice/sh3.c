@@ -52,6 +52,7 @@ void execute(char instruction[M][N]){
             exit(0);
         }
         else{
+            
             close(fd1[0]);
             close(fd1[1]);
             fd1[0] = fd2[0];
